@@ -1,6 +1,6 @@
 
 # Uncomment this to start glbd on startup
-# START_DAEMON="true"
+START_DAEMON="false"
 
 # The TCP port to accept MySQL connections on
 LISTEN_PORT="3307"
