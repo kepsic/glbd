@@ -1,8 +1,13 @@
+glbd (1.0.1-1) unstable; urgency=low
+
+  * Patchfile update to latest version and some cosmetic changes
+
+ -- Andres Kepler <kepsic@gmail.com>  Tue, 03 Dec 2013 10:21:22 +0200
 glbd (1.0.0rc1-1) unstable; urgency=low
 
   * Patchfile update and some cosmetic changes
 
- -- Andres Kepler <kepsic@gmail.com>  Mon, 25 Nv 2013 20:00:25 +0200
+ -- Andres Kepler <kepsic@gmail.com>  Mon, 25 Nov 2013 20:00:25 +0200
 glbd (0.7.5-2) unstable; urgency=low
 
   * Fixes lintian errors

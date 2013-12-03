@@ -1,19 +1,16 @@
-From: Andres Kepler <andres.kepler@elion.ee>
-Description: Adds --pid option and creates PID when daemonising.
-
-diff -urNad glb-1.0.0rc1.orig/src/glb_cmd.c glb-1.0.0rc1/src/glb_cmd.c
---- glb-1.0.0rc1.orig/src/glb_cmd.c	2013-03-04 03:39:12.000000000 +0200
-+++ glb-1.0.0rc1/src/glb_cmd.c	2013-11-25 15:11:37.480925096 +0200
-@@ -28,7 +28,7 @@
+diff -urNad glb-1.0.1.orig/src/glb_cmd.c glb-1.0.1/src/glb_cmd.c
+--- glb-1.0.1.orig/src/glb_cmd.c	2013-11-15 22:38:28.000000000 +0200
++++ glb-1.0.1/src/glb_cmd.c	2013-12-03 10:14:53.298386880 +0200
+@@ -29,7 +29,7 @@
      char* endptr;
  
      // parse options
--    while ((opt = getopt_long (argc, argv, "DKSTVYabc:dfhi:l:m:nt:rsvw:x:",
-+    while ((opt = getopt_long (argc, argv, "DKSTVYabc:dfphi:l:m:nt:rsvw:x:",
+-    while ((opt = getopt_long (argc, argv, "DKL:STVYabc:dfhi:lm:nt:rsvw:x:",
++    while ((opt = getopt_long (argc, argv, "DKL:STVYabc:dfphi:lm:nt:rsvw:x:",
                                 glb_options, &opt_idx)) != -1) {
          switch (opt) {
          case GLB_OPT_DISCOVER:
-@@ -66,6 +66,9 @@
+@@ -76,6 +76,9 @@
          case GLB_OPT_FIFO:
              cnf->fifo_name = optarg;
              break;
@@ -23,52 +20,54 @@ diff -urNad glb-1.0.0rc1.orig/src/glb_cmd.c glb-1.0.0rc1/src/glb_cmd.c
          case '?':
          case GLB_OPT_HELP:
              glb_cmd_help(stdout, argv[0]);
-@@ -159,6 +162,8 @@
+@@ -164,6 +167,9 @@
+              "  -f|--fifo <fifo name>     "
+              "name of the FIFO file for control.\n");
      fprintf (out,
-              "  -f|--fifo <fifo name>     name of the FIFO file for control.\n");
-     fprintf (out,
-+             "  -p|--pid <path>           name of the PID file.\n");
++             "  -p|--pid <path>           "
++             "name of the pid file.\n");
 +    fprintf (out,
               "  -i|--interval D.DDD       "
               "how often to probe destinations for liveness\n"
-              "(fractional seconds, default 1.0).\n");
-diff -urNad glb-1.0.0rc1.orig/src/glb_cnf.c glb-1.0.0rc1/src/glb_cnf.c
---- glb-1.0.0rc1.orig/src/glb_cnf.c	2013-03-04 03:39:12.000000000 +0200
-+++ glb-1.0.0rc1/src/glb_cnf.c	2013-11-25 14:39:18.227507548 +0200
-@@ -16,6 +16,7 @@
- #include <string.h>
+              "                            (fractional seconds, default 1.0).\n"
+diff -urNad glb-1.0.1.orig/src/glb_cnf.c glb-1.0.1/src/glb_cnf.c
+--- glb-1.0.1.orig/src/glb_cnf.c	2013-11-15 22:38:28.000000000 +0200
++++ glb-1.0.1/src/glb_cnf.c	2013-12-03 10:02:44.050394082 +0200
+@@ -19,6 +19,7 @@
  
  static const long long default_check_interval = 1000000000; // 1 sec
-+static const char      default_pid_name[]    = "/tmp/glbd.pid";
  static const char      default_fifo_name[]    = "/tmp/glbd.fifo";
++static const char      default_pidfile[]    = "/tmp/glbd.pid";
  
  glb_cnf_t*
-@@ -28,6 +29,7 @@
+ glb_cnf_init ()
+@@ -30,6 +31,7 @@
          memset (ret, 0, sizeof(*ret));
  #ifdef GLBD
          ret->fifo_name = default_fifo_name;
-+        ret->pidfile   = default_pid_name;
++        ret->pidfile   = default_pidfile;
          ret->n_threads = 1;
          ret->max_conn  = glb_get_conn_limit();
          ret->nodelay   = true;
-diff -urNad glb-1.0.0rc1.orig/src/glb_cnf.h glb-1.0.0rc1/src/glb_cnf.h
---- glb-1.0.0rc1.orig/src/glb_cnf.h	2013-03-04 03:39:12.000000000 +0200
-+++ glb-1.0.0rc1/src/glb_cnf.h	2013-11-25 14:37:14.648625936 +0200
-@@ -32,6 +32,7 @@
-     glb_time_t     interval;     // health check interval (nanoseconds)
+diff -urNad glb-1.0.1.orig/src/glb_cnf.h glb-1.0.1/src/glb_cnf.h
+--- glb-1.0.1.orig/src/glb_cnf.h	2013-11-15 22:38:28.000000000 +0200
++++ glb-1.0.1/src/glb_cnf.h	2013-12-03 10:03:44.158393489 +0200
+@@ -33,6 +33,7 @@
      glb_time_t     extra;        // extra check interval (nanoseconds)
  #ifdef GLBD
-+    const char*    pidfile;     // PID file name
      const char*    fifo_name;    // FIFO file name
++    const char*    pidfile;      // PID file name
      int            n_threads;    // number of routing threads (1 .. oo)
      int            max_conn;     // max allowed client connections
-diff -urNad glb-1.0.0rc1.orig/src/glb_daemon.c glb-1.0.0rc1/src/glb_daemon.c
---- glb-1.0.0rc1.orig/src/glb_daemon.c	2013-03-04 03:39:12.000000000 +0200
-+++ glb-1.0.0rc1/src/glb_daemon.c	2013-11-25 15:09:39.118142603 +0200
+     bool           nodelay;      // use TCP_NODELAY?
+diff -urNad glb-1.0.1.orig/src/glb_daemon.c glb-1.0.1/src/glb_daemon.c
+--- glb-1.0.1.orig/src/glb_daemon.c	2013-11-15 22:38:28.000000000 +0200
++++ glb-1.0.1/src/glb_daemon.c	2013-12-03 10:05:42.894392316 +0200
 @@ -30,6 +30,26 @@
  
  #define CHILD_OK_TIMEOUT 5
  
++
 +void glb_daemon_pidfile(const char *pidfile, pid_t pid)
 +{
 +       int fd;
@@ -88,36 +87,35 @@ diff -urNad glb-1.0.0rc1.orig/src/glb_daemon.c glb-1.0.0rc1/src/glb_daemon.c
 +       close(fd);
 +}
 +
-+
  void glb_daemon_start (const glb_cnf_t* cnf)
  {
      pid_t pid, sid;
-@@ -56,6 +76,9 @@
+@@ -61,6 +81,9 @@
  
      /* If we got a good PID, then we can exit the parent process. */
      if (pid > 0) {
-+	/* Create a PID file */
++        /* Create a PID file */
 +        glb_daemon_pidfile(cnf->pidfile, pid);
 +
          /* Wait for confirmation from the child via GLB_SIGNAL_OK, or
             for SIGALRM.  If pause() returns - it means timeout. */
          alarm(CHILD_OK_TIMEOUT);
-diff -urNad glb-1.0.0rc1.orig/src/glb_opt.h glb-1.0.0rc1/src/glb_opt.h
---- glb-1.0.0rc1.orig/src/glb_opt.h	2013-03-04 03:39:12.000000000 +0200
-+++ glb-1.0.0rc1/src/glb_opt.h	2013-11-25 15:17:13.208827281 +0200
-@@ -31,6 +31,7 @@
+diff -urNad glb-1.0.1.orig/src/glb_opt.h glb-1.0.1/src/glb_opt.h
+--- glb-1.0.1.orig/src/glb_opt.h	2013-11-15 22:38:28.000000000 +0200
++++ glb-1.0.1/src/glb_opt.h	2013-12-03 10:09:48.286389892 +0200
+@@ -32,6 +32,7 @@
      GLB_OPT_CONTROL      = 'c',
      GLB_OPT_DAEMON       = 'd',
      GLB_OPT_FIFO         = 'f',
 +    GLB_OPT_PID          = 'p',
      GLB_OPT_HELP         = 'h',
      GLB_OPT_INTERVAL     = 'i',
-     GLB_OPT_LATENCY      = 'l',
-@@ -58,6 +59,7 @@
+     GLB_OPT_LINGER       = 'l',
+@@ -60,6 +61,7 @@
      { "control",         GLB_RA, NULL, GLB_OPT_CONTROL       },
      { "daemon",          GLB_NA, NULL, GLB_OPT_DAEMON        },
      { "fifo",            GLB_RA, NULL, GLB_OPT_FIFO          },
-+    { "pid",         GLB_RA, NULL, GLB_OPT_PID           },
++    { "pid",             GLB_RA, NULL, GLB_OPT_PID           },
      { "help",            GLB_NA, NULL, GLB_OPT_HELP          },
      { "interval",        GLB_RA, NULL, GLB_OPT_INTERVAL      },
-     { "latency",         GLB_RA, NULL, GLB_OPT_LATENCY       },
+     { "linger",          GLB_NA, NULL, GLB_OPT_LINGER        },
